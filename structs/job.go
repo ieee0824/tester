@@ -3,7 +3,6 @@ package structs
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,15 +11,15 @@ import (
 )
 
 type Job struct {
-	SessionName   string `toml:"session_name"`
-	Name          string `toml:"name"`
-	RequestBody   string `toml:"request_body"`
-	URL           string `toml:"url"`
-	RequestMethod string `toml:"request_method"`
+	SessionName   string `yaml:"session_name"`
+	Name          string `yaml:"name"`
+	RequestBody   string `yaml:"request_body"`
+	URL           string `yaml:"url"`
+	RequestMethod string `yaml:"request_method"`
 
-	StatusCode   int    `toml:"status_code"`
-	ResponseBody string `toml:"response_body"`
-	ResponseType string `toml:"response_type"`
+	StatusCode   int     `yaml:"status_code"`
+	ResponseBody *string `yaml:"response_body"`
+	ResponseType string  `yaml:"response_type"`
 }
 
 func (j *Job) Run() error {
@@ -33,13 +32,28 @@ func (j *Job) Run() error {
 		Jar: jar,
 	}
 
-	req, err := http.NewRequest(
-		j.RequestMethod,
-		j.URL,
-		strings.NewReader(j.RequestBody),
-	)
-	if err != nil {
-		return err
+	var req *http.Request
+	switch j.RequestMethod {
+	case "POST":
+		r, err := http.NewRequest(
+			j.RequestMethod,
+			j.URL,
+			strings.NewReader(j.RequestBody),
+		)
+		if err != nil {
+			return err
+		}
+		req = r
+	default:
+		r, err := http.NewRequest(
+			j.RequestMethod,
+			j.URL,
+			nil,
+		)
+		if err != nil {
+			return err
+		}
+		req = r
 	}
 
 	resp, err := client.Do(req)
@@ -49,15 +63,18 @@ func (j *Job) Run() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != j.StatusCode {
-		return errors.New("status code is not match")
+		return fmt.Errorf("status code is not match %d, %d", j.StatusCode, resp.StatusCode)
 	}
 
+	if j.ResponseBody == nil {
+		return nil
+	}
 	switch j.ResponseType {
 	case "json":
 		a := map[string]interface{}{}
 		b := map[string]interface{}{}
 
-		ar := strings.NewReader(j.RequestBody)
+		ar := strings.NewReader(*j.ResponseBody)
 		br := resp.Body
 
 		if err := json.NewDecoder(ar).Decode(&a); err != nil {
