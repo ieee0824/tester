@@ -2,6 +2,7 @@ package structs
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,8 +29,13 @@ func (j *Job) Run() error {
 		return err
 	}
 
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
 	client := http.Client{
-		Jar: jar,
+		Jar:       jar,
+		Transport: tr,
 	}
 
 	var req *http.Request
