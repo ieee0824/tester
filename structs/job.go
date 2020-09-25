@@ -6,10 +6,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strings"
 )
+
+type JobOption struct {
+	Debug bool
+}
 
 type Job struct {
 	SessionName   string `yaml:"session_name"`
@@ -23,10 +29,29 @@ type Job struct {
 	ResponseType string  `yaml:"response_type"`
 }
 
-func (j *Job) Run() error {
+func (j *Job) Run(opts ...JobOption) error {
+	isDebugMode := false
+	if len(opts) != 0 {
+		isDebugMode = opts[0].Debug
+	}
+
 	jar, err := GlobalSessionStorage.GetJar(j.SessionName)
 	if err != nil {
 		return err
+	}
+
+	if isDebugMode {
+		log.Printf("jar: %v\n", jar)
+		u, err := url.Parse(j.URL)
+		if err != nil {
+			panic(err)
+		}
+		cookies := jar.Cookies(u)
+
+		log.Println("setted cookies")
+		for _, c := range cookies {
+			log.Println(c)
+		}
 	}
 
 	tr := &http.Transport{

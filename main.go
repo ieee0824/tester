@@ -11,9 +11,13 @@ import (
 
 func main() {
 	s := flag.String("s", "schedule.yaml", "schedule file")
+	debug := flag.Bool("d", false, "debug mode")
 	flag.Parse()
 
 	schedule := &structs.Schedule{}
+	if *debug {
+		schedule.EnableDebugMode()
+	}
 
 	f, err := os.Open(*s)
 	if err != nil {

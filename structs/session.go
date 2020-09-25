@@ -15,6 +15,7 @@ func (s SessionStorage) GetJar(name string) (*cookiejar.Jar, error) {
 		if err != nil {
 			return nil, err
 		}
+		s[name] = j
 
 		jar = j
 	}
