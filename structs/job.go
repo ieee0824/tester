@@ -13,6 +13,32 @@ import (
 	"strings"
 )
 
+func deleteKey(m map[string]interface{}, key string) {
+	if key == "" {
+		return
+	}
+	keys := strings.Split(key, ".")
+	for i, k := range keys {
+		if v, ok := m[k]; ok {
+			switch v.(type) {
+			case map[string]interface{}:
+				if i == len(keys)-1 {
+					delete(m, k)
+				} else {
+					m = v.(map[string]interface{})
+				}
+
+			default:
+				delete(m, k)
+				return
+			}
+		} else {
+			return
+		}
+	}
+	return
+}
+
 type JobOption struct {
 	Debug bool
 }
@@ -24,9 +50,11 @@ type Job struct {
 	URL           string `yaml:"url"`
 	RequestMethod string `yaml:"request_method"`
 
-	StatusCode   int     `yaml:"status_code"`
-	ResponseBody *string `yaml:"response_body"`
-	ResponseType string  `yaml:"response_type"`
+	StatusCode         int      `yaml:"status_code"`
+	ResponseBody       *string  `yaml:"response_body"`
+	IgnoreResponseKeys []string `yaml:"ignore_response_keys"`
+
+	ResponseType string `yaml:"response_type"`
 }
 
 func (j *Job) Run(opts ...JobOption) error {
@@ -113,6 +141,12 @@ func (j *Job) Run(opts ...JobOption) error {
 		}
 		if err := json.NewDecoder(br).Decode(&b); err != nil {
 			return err
+		}
+		for _, ignoreKey := range j.IgnoreResponseKeys {
+			if isDebugMode {
+				log.Println("ignore key:", ignoreKey)
+			}
+			deleteKey(b, ignoreKey)
 		}
 
 		if !reflect.DeepEqual(a, b) {

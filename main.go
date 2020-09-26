@@ -32,6 +32,7 @@ func main() {
 	if err := schedule.Run(); err != nil {
 		log.Fatalln(err)
 	}
+
 	log.Println("all test is pass")
 
 }
