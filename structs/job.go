@@ -11,33 +11,9 @@ import (
 	"net/url"
 	"reflect"
 	"strings"
+
+	"github.com/itchyny/gojq"
 )
-
-func deleteKey(m map[string]interface{}, key string) {
-	if key == "" {
-		return
-	}
-	keys := strings.Split(key, ".")
-	for i, k := range keys {
-		if v, ok := m[k]; ok {
-			switch v.(type) {
-			case map[string]interface{}:
-				if i == len(keys)-1 {
-					delete(m, k)
-				} else {
-					m = v.(map[string]interface{})
-				}
-
-			default:
-				delete(m, k)
-				return
-			}
-		} else {
-			return
-		}
-	}
-	return
-}
 
 type JobOption struct {
 	Debug bool
@@ -130,8 +106,8 @@ func (j *Job) Run(opts ...JobOption) error {
 	}
 	switch j.ResponseType {
 	case "json":
-		a := map[string]interface{}{}
-		b := map[string]interface{}{}
+		var a interface{}
+		var b interface{}
 
 		ar := strings.NewReader(*j.ResponseBody)
 		br := resp.Body
@@ -142,11 +118,23 @@ func (j *Job) Run(opts ...JobOption) error {
 		if err := json.NewDecoder(br).Decode(&b); err != nil {
 			return err
 		}
+
 		for _, ignoreKey := range j.IgnoreResponseKeys {
-			if isDebugMode {
-				log.Println("ignore key:", ignoreKey)
+			query, err := gojq.Parse(fmt.Sprintf("del(%s)", ignoreKey))
+			if err != nil {
+				return err
 			}
-			deleteKey(b, ignoreKey)
+			iter := query.Run(b)
+			for {
+				v, ok := iter.Next()
+				if !ok {
+					break
+				}
+				if err, ok := v.(error); ok {
+					return err
+				}
+				b = v
+			}
 		}
 
 		if !reflect.DeepEqual(a, b) {
