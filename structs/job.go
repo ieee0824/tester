@@ -138,14 +138,22 @@ func (j *Job) Run(opts ...JobOption) error {
 		}
 
 		if !reflect.DeepEqual(a, b) {
-			return fmt.Errorf("response body not mathc: %v, %v", a, b)
+			bufA := new(bytes.Buffer)
+			bufB := new(bytes.Buffer)
+			ea := json.NewEncoder(bufA)
+			ea.SetIndent("", "    ")
+			ea.Encode(a)
+			eb := json.NewEncoder(bufB)
+			eb.SetIndent("", "    ")
+			eb.Encode(b)
+			return fmt.Errorf("response body not match:\n%v\n%v", bufA.String(), bufB.String())
 		}
 	default:
 		buf := new(bytes.Buffer)
 		io.Copy(buf, resp.Body)
 
 		if j.RequestBody != buf.String() {
-			return fmt.Errorf("response body not mathc: %s, %s", j.RequestBody, buf.String())
+			return fmt.Errorf("response body not match: %s, %s", j.RequestBody, buf.String())
 		}
 	}
 
