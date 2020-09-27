@@ -13,6 +13,9 @@ func main() {
 	s := flag.String("s", "schedule.yaml", "schedule file")
 	debug := flag.Bool("d", false, "debug mode")
 	flag.Parse()
+	if *debug {
+		log.SetFlags(log.Lshortfile)
+	}
 
 	schedule := &structs.Schedule{}
 	if *debug {
